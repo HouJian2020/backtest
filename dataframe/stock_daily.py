@@ -367,6 +367,7 @@ class StockRatioMarketOrder(StockMarketOrder):
         if sum(data[self.ratio_relative] < 0) > 0:
             raise (ValueError("比例市价单不能含有卖单"))
 
+        data = data.copy()
         data[VolumeName.TARGETVOL] = 100
         order_data = super(StockMarketOrder, self).send_orders(
             data=data, order_seq=order_seq)

@@ -73,11 +73,14 @@ class CBMarket(MarketBase):
         df_info = df_data.loc[~l_nan].groupby(
             'windcode')['date'].agg(['min', 'max'])
 
-        # 如果标的数据最新有数据，哪怕是停牌数据，也要暂认为标的处于存续期
-        # 如果不想添加这个逻辑可以把以下三行代码注释掉
-        max_date = df_data.groupby('windcode')['date'].max()
-        secu_subsist = max_date.index[max_date == self.trade_dates.max()]
-        df_info.loc[secu_subsist.intersection(df_info.index), 'max'] = max_date
+        # 数据最的处理方法， 方案一和二选择一个即可，注释掉另外一个代码块
+        # 方案一： 标的数据的最大日期为原始数据“对应标的”数据的最大日期，（哪怕是停牌数据，也要暂认为标的处于存续期），该方案不支持持有退市标的
+        # max_date = df_data.groupby('windcode')['date'].max()
+        # secu_subsist = max_date.index[max_date == self.trade_dates.max()]
+        # df_info.loc[secu_subsist.intersection(df_info.index), 'max'] = max_date
+
+        # 方案二： 标的数据的最大日期为原始数据“所有标的”数据的最大日期，该方案支持持有退市标的
+        df_info['max'] = self.trade_dates.max()
 
         # 根据最大最小日期，计算标的数据的开始与结束日期
         date_set = df_info.apply(
@@ -99,9 +102,9 @@ class CBMarket(MarketBase):
         cols = ['成交量', '成交额']
         df_data[cols] = df_data[cols].fillna(0)
 
-        # 2. 如果收盘价缺失， 则开、高、低数据无效
-        l_close_nan = df_data['收盘价'].isnull()
-        df_data.loc[l_close_nan, ['开盘价', '最高价', '最低价', 'VWAP']] = np.nan
+        # 2. 如果收盘价缺失或者成交量为0， 则开、高、低、收数据无效
+        l_close_nan = df_data['收盘价'].isnull() | (df_data['成交量'] < 0.1)
+        df_data.loc[l_close_nan, ['开盘价', '最高价', '最低价', '收盘价', 'VWAP']] = np.nan
 
         # 3. 收盘用前值填充缺失值
         df_data['收盘价'] = df_data.groupby(
@@ -502,7 +505,7 @@ class CBVWAPOrder(VolumeOrderStrategy):
         order_data['volumeabs_tradable_cumsum'] = order_data[
             ['volume_limit', 'volumeabs_totrade_cumsum']].min(axis=1)
         # 真实的累积成交量绝对值还原为真实可成交的订单量绝对值
-        order_data['volumeabs_tradable'] = order_data.groupby(SymbolName.CODE)[
+        order_data['volumeabs_tradable'] = order_data.groupby(SymbolName.CODE, group_keys=False)[
             'volumeabs_tradable_cumsum'].apply(lambda x: x-x.shift(1).fillna(0)).values
         l_trade_able = order_data['volumeabs_tradable'] > tol
         # 更改订单的VolumeName.TARGETVOL，返回可成交的订单数据
