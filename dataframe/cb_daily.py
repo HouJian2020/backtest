@@ -189,7 +189,8 @@ class CBMarket(MarketBase):
             # 删除当前无法获得的数据
             self.current_frame.drop(columns=[
                 PriceName.HIGHADJ, PriceName.LOWADJ, PriceName.CLOSEADJ,
-                VolumeName.VOLUME, VolumeName.AMOUNT],
+                # VolumeName.VOLUME, VolumeName.AMOUNT
+            ],
                 inplace=True)
         elif event.event_type == EventType.CLOSE:
             self.current_frame[PriceName.SETTLEP] = self.current_frame[PriceName.CLOSEADJ]
@@ -292,7 +293,7 @@ class CBMarketOrder(VolumeOrderStrategy):
         order_data[PriceName.TARGETP] = info[PriceName.SETTLEP].values
 
         # 是否可交易
-        l_trade = (info[VolumeName.VOLUME] > 0).value  # 当日有成交
+        l_trade = (info[VolumeName.VOLUME] > 0).values  # 当日有成交
 
         # 执行可交易的订单
         trade_data_raw, unfinished_order = self.order_to_trade(
@@ -335,7 +336,7 @@ class CBRatioMarketOrder(CBMarketOrder):
     ratio_relative = 'ratio_relative'  # 输入数据必须包含的字段
 
     def send_orders(self,
-                    data,  # 至少包含代码SymbolName.CODE、 ratio_netasset两个字段
+                    data,  # 至少包含代码SymbolName.CODE、 ratio_relative两个字段
                     ratio_to_netasset: float = 1.0,  # 总的买入资金占净资产的比例
                     confirm_volume: bool = False,  # 是否此时确定成交量
                     order_seq: int = None,  # 订单交易序号，序列号越小交易越优先，一般卖单比买单优先
@@ -346,7 +347,7 @@ class CBRatioMarketOrder(CBMarketOrder):
             b. 占净资产比例ratio_to_netasset = 10%；
             c. A的目标成交量 =  20000* 10% * (1/(1+2+3))
         2. 根据ratio_volume_limit确定成交金额的上限制；
-        3. event_confirm_volume为成交量确定的事件，一旦确定后成交量就不变，订单成交的逻辑按照普通的vwap订单执行。
+        3. event_confirm_volume为成交量确定的事件，一旦确定后成交量就不变，订单成交的逻辑按照普通的vwap订单执行, 建议默认参数False， 更复合客观情况。
         """
 
         if self.ratio_relative not in data.columns:
@@ -358,6 +359,7 @@ class CBRatioMarketOrder(CBMarketOrder):
 
         # 生成订单
         # 创建一个列，用于初始订单生成
+        data = data.copy()
         data[VolumeName.TARGETVOL] = self.mkt_obj.min_send_buy_volume + 1
         order_data = super(CBMarketOrder, self).send_orders(data=data,
                                                             order_seq=order_seq)
@@ -551,7 +553,7 @@ class CBRatioVWAPOrder(CBVWAPOrder):
     ratio_relative = 'ratio_relative'  # 输入数据必须包含的字段
 
     def send_orders(self,
-                    data,  # 至少包含代码SymbolName.CODE、 ratio_netasset两个字段
+                    data,  # 至少包含代码SymbolName.CODE、 ratio_relative两个字段
                     ratio_to_netasset: float = 1.0,  # 总的买入资金占净资产的比例
                     event_confirm_volume: str = 'send',  # 成交量什么时候确定下来
                     order_seq: int = None,  # 订单交易序号，序列号越小交易越优先，一般卖单比买单优先
@@ -693,8 +695,7 @@ class CBTargetRatioVWAP(CBTargetVolumeVWAP):
 
     def send_orders(self,
                     data,  # 至少包含代码SymbolName.CODE、 两个字段
-                    ratio_volume_limit: float = 0.05,  # 成交金额占当日的成交比例上限
-                    ratio_to_netasset: float = 1.0,  # 总的买入资金占净资产的比例
+                    ratio_to_netasset: float = 1.0,  # 目标持仓市值占净资产的比例
                     order_seq_short: int = None,  # 空单交易序号
                     order_seq_long: int = None,  # 多单交易序号
                     **kwargs):

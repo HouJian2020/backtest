@@ -463,12 +463,12 @@ class TraderBase(ABC):
         """为交易员添加订单策略， 储存为字典self.order_strategys"""
         for strategy in strategys:
             secu_type_str = strategy.secu_type.value
-            if secu_type_str not in self.mkt_dict:
-                raise (ValueError('找不到对应证券类型的行情数据'))
-            if secu_type_str not in self.order_strategys:
-                self.order_strategys[secu_type_str] = []
-            self.order_strategys[secu_type_str].append(
-                strategy(self.observer, self.mkt_dict[secu_type_str]))
+            if secu_type_str in self.mkt_dict:
+                # raise (ValueError('找不到对应证券类型的行情数据'))
+                if secu_type_str not in self.order_strategys:
+                    self.order_strategys[secu_type_str] = []
+                self.order_strategys[secu_type_str].append(
+                    strategy(self.observer, self.mkt_dict[secu_type_str]))
 
     def get_order_strategy(self, secu_type: SecuType, order_type: OrderType):
         order_strategys = self.order_strategys[secu_type.value]

@@ -17,7 +17,7 @@ from .workers import TraderPandas, ObserverPandas, PMPandas
 
 class TradeSession(TradeSessionBase):
     def __init__(self,
-                 PortfolioManager: PMPandas,  # 基金经理（策略）
+                 PortfolioManager: PMPandas = None,  # 基金经理（策略）
                  cash=1e8,  # 默认初始金额为一个小目标
                  start_datetime='2016-01-01',  # 回测的开始日期
                  end_datetime=None,  # 回测的结束日期
@@ -103,6 +103,10 @@ class TradeSession(TradeSessionBase):
     def reset_records(self, events: List[Event]):
         self.del_events(EventType.RECORD)
         self.add_events(events)
+
+    def reset_events(self):
+        super().reset_events()
+        self.init_records()
 
     @property
     def start_datetime(self):
