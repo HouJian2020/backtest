@@ -8,5 +8,4 @@ out
 gen
 **/.ipynb_checkpoints/
 **/__pycache__/
-data_mock/
-test/data/
+data_mock/stock.pkl
